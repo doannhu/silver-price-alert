@@ -120,9 +120,9 @@ def main() -> None:
     crossed_up = mua_vao > threshold and not state.alerted
     if crossed_up:
         send_telegram(
-            f"Silver price alert: {PRODUCT_LABEL}\n"
-            f"Mua vào price for {PRODUCT_LABEL} is now {mua_vao:,} VND, "
-            f"above your threshold of {threshold:,} VND.\nBán ra: {ban_ra:,} VND\nSource: {URL}",
+            f"Cảnh báo giá bạc Ancarat: {PRODUCT_LABEL}\n"
+            f"Giá mua vào {PRODUCT_LABEL} hiện đang là {mua_vao:,} VND, "
+            f"đã cao hơn giá sàn đã định: {threshold:,} VND.\nBán ra: {ban_ra:,} VND\nSource: {URL}",
         )
         state.alerted = True
     elif mua_vao <= threshold:
