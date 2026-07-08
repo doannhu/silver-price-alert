@@ -1,0 +1,14 @@
+# This repo intentionally tracks only the silver price alert project.
+# Other files in this working directory (customer data, DB configs, etc.)
+# are local-only and must never be committed.
+*
+!silver_price_alert/
+!silver_price_alert/**
+!.gitignore
+!.github/
+!.github/**
+
+# Local-only files within the tracked project
+silver_price_alert/.venv/
+silver_price_alert/**/__pycache__/
+silver_price_alert/**/*.pyc
