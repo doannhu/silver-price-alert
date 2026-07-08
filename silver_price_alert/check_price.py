@@ -1,6 +1,6 @@
 """
 Checks the "mua vào" (buy) price of a specific silver product on
-https://giabac.ancarat.com/ and sends a Telegram/email alert the moment
+https://giabac.ancarat.com/ and sends a Telegram alert the moment
 it crosses above a threshold.
 
 State (last price + whether we've already alerted for the current
@@ -8,10 +8,8 @@ crossing) is persisted to state.json so we only notify once per
 crossing, not on every poll.
 
 Required environment variables (set as secrets in CI):
-  TELEGRAM_BOT_TOKEN   - bot token from BotFather (optional if email-only)
-  TELEGRAM_CHAT_ID     - your chat id (optional if email-only)
-  SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, EMAIL_TO
-                       - SMTP creds for email alerts (optional if telegram-only)
+  TELEGRAM_BOT_TOKEN   - bot token from BotFather
+  TELEGRAM_CHAT_ID     - your chat id
 
 Optional:
   PRICE_THRESHOLD      - overrides the default threshold (VND)
@@ -22,10 +20,8 @@ from __future__ import annotations
 import json
 import os
 import re
-import smtplib
 import sys
 from dataclasses import dataclass, asdict
-from email.mime.text import MIMEText
 from pathlib import Path
 
 import requests
@@ -93,31 +89,6 @@ def send_telegram(message: str) -> None:
         print(f"[warn] Telegram send failed: {resp.status_code} {resp.text}", file=sys.stderr)
 
 
-def send_email(subject: str, message: str) -> None:
-    host = os.environ.get("SMTP_HOST")
-    port = os.environ.get("SMTP_PORT")
-    user = os.environ.get("SMTP_USER")
-    password = os.environ.get("SMTP_PASS")
-    to_addr = os.environ.get("EMAIL_TO")
-    if not all([host, port, user, password, to_addr]):
-        return
-
-    msg = MIMEText(message, "plain", "utf-8")
-    msg["Subject"] = subject
-    msg["From"] = user
-    msg["To"] = to_addr
-
-    with smtplib.SMTP(host, int(port), timeout=15) as server:
-        server.starttls()
-        server.login(user, password)
-        server.sendmail(user, [to_addr], msg.as_string())
-
-
-def notify_all(subject: str, message: str) -> None:
-    send_telegram(message)
-    send_email(subject, message)
-
-
 def main() -> None:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
@@ -131,8 +102,8 @@ def main() -> None:
     except Exception as exc:
         print(f"[error] Failed to fetch/parse price: {exc}", file=sys.stderr)
         if not state.monitoring_broken_alerted:
-            notify_all(
-                "Silver price monitor broken",
+            send_telegram(
+                f"Silver price monitor broken\n"
                 f"Could not read the price for {PRODUCT_LABEL} from {URL}.\n"
                 f"Error: {exc}\nThe page layout may have changed — check the scraper.",
             )
@@ -147,8 +118,8 @@ def main() -> None:
 
     crossed_up = mua_vao > threshold and not state.alerted
     if crossed_up:
-        notify_all(
-            f"Silver price alert: {PRODUCT_LABEL}",
+        send_telegram(
+            f"Silver price alert: {PRODUCT_LABEL}\n"
             f"Mua vào price for {PRODUCT_LABEL} is now {mua_vao:,} VND, "
             f"above your threshold of {threshold:,} VND.\nBán ra: {ban_ra:,} VND\nSource: {URL}",
         )
