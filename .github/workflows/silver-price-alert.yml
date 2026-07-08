@@ -3,7 +3,12 @@ name: Silver Price Alert
 on:
   schedule:
     - cron: "*/30 * * * *"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      test_threshold:
+        description: "Override PRICE_THRESHOLD for this run only (e.g. set to 1 to force a test alert). Leave blank for normal runs."
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -24,6 +29,7 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          PRICE_THRESHOLD: ${{ inputs.test_threshold }}
         run: python silver_price_alert/check_price.py
 
       - name: Persist state

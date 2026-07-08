@@ -94,7 +94,8 @@ def main() -> None:
         sys.stdout.reconfigure(encoding="utf-8")
         sys.stderr.reconfigure(encoding="utf-8")
 
-    threshold = int(os.environ.get("PRICE_THRESHOLD", DEFAULT_THRESHOLD))
+    threshold_env = os.environ.get("PRICE_THRESHOLD", "").strip()
+    threshold = int(threshold_env) if threshold_env else DEFAULT_THRESHOLD
     state = load_state()
 
     try:
