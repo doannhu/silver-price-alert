@@ -7,12 +7,10 @@ State (last price + whether we've already alerted for the current
 crossing) is persisted to state.json so we only notify once per
 crossing, not on every poll.
 
-Required environment variables (set as secrets in CI):
+Required environment variables:
   TELEGRAM_BOT_TOKEN   - bot token from BotFather
   TELEGRAM_CHAT_ID     - your chat id
-
-Optional:
-  PRICE_THRESHOLD      - overrides the default threshold (VND)
+  PRICE_THRESHOLD      - alert threshold in VND
 """
 
 from __future__ import annotations
@@ -30,7 +28,6 @@ from bs4 import BeautifulSoup
 URL = "https://giabac.ancarat.com/"
 PRODUCT_SLUG = "ngan-long-quang-tien-1-kilo"
 PRODUCT_LABEL = "Ngân Long Quảng Tiến - 1 Kilo"
-DEFAULT_THRESHOLD = 62_800_000
 STATE_FILE = Path(__file__).parent / "state.json"
 
 
@@ -95,7 +92,9 @@ def main() -> None:
         sys.stderr.reconfigure(encoding="utf-8")
 
     threshold_env = os.environ.get("PRICE_THRESHOLD", "").strip()
-    threshold = int(threshold_env) if threshold_env else DEFAULT_THRESHOLD
+    if not threshold_env:
+        raise SystemExit("PRICE_THRESHOLD environment variable is required")
+    threshold = int(threshold_env)
     state = load_state()
 
     try:
