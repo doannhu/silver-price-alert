@@ -1,8 +1,6 @@
 name: Silver Price Alert
 
 on:
-  schedule:
-    - cron: "*/5 * * * *"
   workflow_dispatch:
     inputs:
       test_threshold:
