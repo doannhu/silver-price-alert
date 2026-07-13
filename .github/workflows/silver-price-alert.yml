@@ -28,6 +28,7 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           PRICE_THRESHOLD: ${{ inputs.test_threshold || vars.PRICE_THRESHOLD }}
+          LEVEL_GAP: ${{ vars.LEVEL_GAP }}
         run: python silver_price_alert/check_price.py
 
       - name: Persist state

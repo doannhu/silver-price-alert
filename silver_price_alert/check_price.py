@@ -1,16 +1,20 @@
 """
 Checks the "mua vào" (buy) price of a specific silver product on
-https://giabac.ancarat.com/ and sends a Telegram alert the moment
-it crosses above a threshold.
+https://giabac.ancarat.com/ and sends a Telegram alert whenever it
+reaches a new price level above a threshold.
 
-State (last price + whether we've already alerted for the current
-crossing) is persisted to state.json so we only notify once per
-crossing, not on every poll.
+Levels are threshold, threshold + LEVEL_GAP, threshold + 2*LEVEL_GAP,
+etc. Only the highest level reached since the price last dropped back
+to/below threshold triggers an alert, so a price oscillating within
+one level doesn't spam — but continued climbing still gets one alert
+per level. State (last price + highest level already alerted) is
+persisted to state.json.
 
 Required environment variables:
   TELEGRAM_BOT_TOKEN   - bot token from BotFather
   TELEGRAM_CHAT_ID     - your chat id
-  PRICE_THRESHOLD      - alert threshold in VND
+  PRICE_THRESHOLD      - base alert level in VND
+  LEVEL_GAP            - VND gap between consecutive alert levels
 """
 
 from __future__ import annotations
@@ -34,7 +38,7 @@ STATE_FILE = Path(__file__).parent / "state.json"
 @dataclass
 class State:
     last_mua_vao: int | None = None
-    alerted: bool = False
+    last_alerted_level: int | None = None
     monitoring_broken_alerted: bool = False
 
 
@@ -95,6 +99,12 @@ def main() -> None:
     if not threshold_env:
         raise SystemExit("PRICE_THRESHOLD environment variable is required")
     threshold = int(threshold_env)
+
+    gap_env = os.environ.get("LEVEL_GAP", "").strip()
+    if not gap_env:
+        raise SystemExit("LEVEL_GAP environment variable is required")
+    level_gap = int(gap_env)
+
     state = load_state()
 
     try:
@@ -116,17 +126,18 @@ def main() -> None:
     # Recovered from a previous scrape failure.
     state.monitoring_broken_alerted = False
 
-    crossed_up = mua_vao > threshold and not state.alerted
-    if crossed_up:
-        send_telegram(
-            f"Cảnh báo giá bạc Ancarat: {PRODUCT_LABEL}\n"
-            f"Giá mua vào {PRODUCT_LABEL} hiện đang là {mua_vao:,} VND, "
-            f"đã cao hơn giá sàn đã định: {threshold:,} VND.\nBán ra: {ban_ra:,} VND\nSource: {URL}",
-        )
-        state.alerted = True
-    elif mua_vao <= threshold:
-        # Reset so the next time it crosses above threshold we alert again.
-        state.alerted = False
+    if mua_vao > threshold:
+        current_level = threshold + (mua_vao - threshold) // level_gap * level_gap
+        if state.last_alerted_level is None or current_level > state.last_alerted_level:
+            send_telegram(
+                f"Cảnh báo giá bạc Ancarat: {PRODUCT_LABEL}\n"
+                f"Giá mua vào đã đạt mốc {current_level:,} VND (ngưỡng: {threshold:,} VND).\n"
+                f"Giá mua vào hiện tại: {mua_vao:,} VND\nBán ra: {ban_ra:,} VND\nSource: {URL}",
+            )
+            state.last_alerted_level = current_level
+    else:
+        # Reset so the next climb above threshold starts a fresh set of levels.
+        state.last_alerted_level = None
 
     state.last_mua_vao = mua_vao
     save_state(state)
