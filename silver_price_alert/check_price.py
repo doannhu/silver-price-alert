@@ -23,7 +23,7 @@ import json
 import os
 import re
 import sys
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, fields
 from pathlib import Path
 
 import requests
@@ -44,7 +44,9 @@ class State:
 
 def load_state() -> State:
     if STATE_FILE.exists():
-        return State(**json.loads(STATE_FILE.read_text(encoding="utf-8")))
+        raw = json.loads(STATE_FILE.read_text(encoding="utf-8"))
+        known = {f.name for f in fields(State)}
+        return State(**{k: v for k, v in raw.items() if k in known})
     return State()
 
 
